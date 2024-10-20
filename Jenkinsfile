@@ -1,31 +1,29 @@
 pipeline {
     agent any
 
-    environment {
-        SONARQUBE_URL = 'http://192.168.33.10:9000'          
-        SONARQUBE_TOKEN = credentials('sonarqube-token') // Use the ID you set when adding the SonarQube token to Jenkins credentials
-    }
-
     stages {
-        stage('Checkout') {
+        stage('SCM') {
             steps {
-                // Replace this with your repository
-                git 'https://github.com/Rimesp/ProjetRecrutement.git'  
+                checkout scm
             }
         }
 
         stage('Build') {
             steps {
-                // Modify this to match your build command (e.g., Maven, Gradle, etc.)
-                sh 'mvn clean install'
+                script {
+                    def mvn = tool 'M2_HOME'; // Using 'M2_HOME' as your Maven tool name
+                    sh "${mvn}/bin/mvn clean install" // Modify this command as needed for your build
+                }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {   // This refers to the SonarQube configuration you did earlier in Jenkins
-                    // Run the SonarQube analysis using the token for authentication
-                    sh 'mvn sonar:sonar -Dsonar.login=${SONARQUBE_TOKEN}'
+                script {
+                    def mvn = tool 'M2_HOME'; // Use the same Maven tool for the SonarQube analysis
+                    withSonarQubeEnv('SonarQube') { // Reference the SonarQube configuration in Jenkins
+                        sh "${mvn}/bin/mvn sonar:sonar -Dsonar.projectKey=projet2024 -Dsonar.projectName='projet2024'"
+                    }
                 }
             }
         }
@@ -34,7 +32,6 @@ pipeline {
             steps {
                 script {
                     timeout(time: 5, unit: 'MINUTES') {
-                        // This checks if the SonarQube Quality Gate was passed
                         waitForQualityGate abortPipeline: true
                     }
                 }
